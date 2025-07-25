@@ -41,11 +41,25 @@ CREATE TABLE reservations (
   guest_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Property Reviews table
-CREATE TABLE property_reviews (
+-- Drop existing stretch tables if re-running schema
+DROP TABLE IF EXISTS guest_reviews CASCADE;
+DROP TABLE IF EXISTS property_rates CASCADE;
+
+-- Table: property_rates
+CREATE TABLE property_rates (
   id SERIAL PRIMARY KEY,
-  reservation_id INTEGER NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
+  property_id INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  cost_per_night INTEGER NOT NULL CHECK (cost_per_night >= 0)
+);
+
+-- Table: guest_reviews
+CREATE TABLE guest_reviews (
+  id SERIAL PRIMARY KEY,
   guest_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  message TEXT NOT NULL,
-  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5)
+  owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  reservation_id INTEGER NOT NULL REFERENCES reservations(id) ON DELETE CASCADE,
+  rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  message TEXT
 );

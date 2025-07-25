@@ -1,65 +1,73 @@
-// db/database.js
-
-const db = require('./db'); // PostgreSQL connection
-
-//
-// Users
-//
-
 /**
- * Fetch a user by their email.
- * @param {string} email - The user's email.
- * @returns {Promise<object|null>} Resolves to user object or null if not found.
+ * Get all properties with optional filters.
+ * @param {Object} options - Search options.
+ * @param {number} limit - Max number of results (default 10).
+ * @returns {Promise<Array>} Resolves to array of property objects.
  */
-const getUserWithEmail = (email) => {
-  const query = `SELECT * FROM users WHERE email = $1;`;
-  const values = [email.toLowerCase()];
-
-  return db.query(query, values)
-    .then(res => res.rows[0] || null)
-    .catch(err => {
-      console.error('getUserWithEmail error:', err.message);
-      return null;
-    });
-};
-exports.getUserWithEmail = getUserWithEmail;
-
-/**
- * Fetch a user by their ID.
- * @param {string|number} id - The user's ID.
- * @returns {Promise<object|null>} Resolves to user object or null if not found.
- */
-const getUserWithId = (id) => {
-  const query = `SELECT * FROM users WHERE id = $1;`;
-  const values = [id];
-
-  return db.query(query, values)
-    .then(res => res.rows[0] || null)
-    .catch(err => {
-      console.error('getUserWithId error:', err.message);
-      return null;
-    });
-};
-exports.getUserWithId = getUserWithId;
-
-/**
- * Add a new user to the database.
- * @param {{name: string, email: string, password: string}} user - The new user.
- * @returns {Promise<object|null>} Resolves to the created user object or null on failure.
- */
-const addUser = ({ name, email, password }) => {
-  const query = `
-    INSERT INTO users (name, email, password)
-    VALUES ($1, $2, $3)
-    RETURNING *;
+const getAllProperties = function (options, limit = 10) {
+  const queryParams = [];
+  let queryString = `
+    SELECT properties.*, avg(property_reviews.rating) AS average_rating
+    FROM properties
+    JOIN property_reviews ON properties.id = property_reviews.property_id
   `;
-  const values = [name, email.toLowerCase(), password];
 
-  return db.query(query, values)
-    .then(res => res.rows[0])
+  const whereClauses = [];
+
+  // Filter: City
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    whereClauses.push(`city LIKE $${queryParams.length}`);
+  }
+
+  // Filter: Owner ID
+  if (options.owner_id) {
+    queryParams.push(options.owner_id);
+    whereClauses.push(`owner_id = $${queryParams.length}`);
+  }
+
+  // Filter: Minimum Price
+  if (options.minimum_price_per_night) {
+    queryParams.push(Number(options.minimum_price_per_night) * 100); // convert to cents
+    whereClauses.push(`cost_per_night >= $${queryParams.length}`);
+  }
+
+  // Filter: Maximum Price
+  if (options.maximum_price_per_night) {
+    queryParams.push(Number(options.maximum_price_per_night) * 100); // convert to cents
+    whereClauses.push(`cost_per_night <= $${queryParams.length}`);
+  }
+
+  // Append WHERE clause if there are any filters
+  if (whereClauses.length > 0) {
+    queryString += `WHERE ${whereClauses.join(' AND ')}\n`;
+  }
+
+  // GROUP BY and HAVING for average rating
+  queryString += `
+    GROUP BY properties.id
+  `;
+
+  if (options.minimum_rating) {
+    queryParams.push(Number(options.minimum_rating));
+    queryString += `HAVING avg(property_reviews.rating) >= $${queryParams.length}\n`;
+  }
+
+  // Final ORDER and LIMIT
+  queryParams.push(limit);
+  queryString += `
+    ORDER BY cost_per_night
+    LIMIT $${queryParams.length};
+  `;
+
+  console.log("🧪 FINAL QUERY:\n", queryString);
+  console.log("🔢 PARAMS:\n", queryParams);
+
+  return db.query(queryString, queryParams)
+    .then(res => res.rows)
     .catch(err => {
-      console.error('addUser error:', err.message);
+      console.error('getAllProperties error:', err.message);
       return null;
     });
 };
-exports.addUser = addUser;
+exports.getAllProperties = getAllProperties;

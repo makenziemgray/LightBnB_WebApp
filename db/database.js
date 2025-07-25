@@ -1,40 +1,42 @@
-// database.js
+// db/database.js
 
-const db = require('./db'); // Adjust path as needed based on your folder structure
+const db = require('./db'); // PostgreSQL connection
 
-/// Users
+//
+// Users
+//
 
 /**
- * Get a single user from the database given their email.
- * @param {String} email The email of the user.
- * @return {Promise<Object|null>} A promise to the user object or null if not found.
+ * Fetch a user by their email.
+ * @param {string} email - The user's email.
+ * @returns {Promise<object|null>} Resolves to user object or null if not found.
  */
-const getUserWithEmail = function (email) {
-  const queryString = `SELECT * FROM users WHERE email = $1;`;
+const getUserWithEmail = (email) => {
+  const query = `SELECT * FROM users WHERE email = $1;`;
   const values = [email.toLowerCase()];
 
-  return db.query(queryString, values)
+  return db.query(query, values)
     .then(res => res.rows[0] || null)
     .catch(err => {
-      console.error('Error in getUserWithEmail:', err.message);
+      console.error('getUserWithEmail error:', err.message);
       return null;
     });
 };
 exports.getUserWithEmail = getUserWithEmail;
 
 /**
- * Get a single user from the database given their ID.
- * @param {String} id The id of the user.
- * @return {Promise<Object|null>} A promise to the user object or null if not found.
+ * Fetch a user by their ID.
+ * @param {string|number} id - The user's ID.
+ * @returns {Promise<object|null>} Resolves to user object or null if not found.
  */
-const getUserWithId = function (id) {
-  const queryString = `SELECT * FROM users WHERE id = $1;`;
+const getUserWithId = (id) => {
+  const query = `SELECT * FROM users WHERE id = $1;`;
   const values = [id];
 
-  return db.query(queryString, values)
+  return db.query(query, values)
     .then(res => res.rows[0] || null)
     .catch(err => {
-      console.error('Error in getUserWithId:', err.message);
+      console.error('getUserWithId error:', err.message);
       return null;
     });
 };
@@ -42,22 +44,21 @@ exports.getUserWithId = getUserWithId;
 
 /**
  * Add a new user to the database.
- * @param {{name: string, email: string, password: string}} user The user to add.
- * @return {Promise<Object|null>} A promise to the new user object or null on failure.
+ * @param {{name: string, email: string, password: string}} user - The new user.
+ * @returns {Promise<object|null>} Resolves to the created user object or null on failure.
  */
-const addUser = function (user) {
-  const { name, email, password } = user;
-  const queryString = `
+const addUser = ({ name, email, password }) => {
+  const query = `
     INSERT INTO users (name, email, password)
     VALUES ($1, $2, $3)
     RETURNING *;
   `;
   const values = [name, email.toLowerCase(), password];
 
-  return db.query(queryString, values)
+  return db.query(query, values)
     .then(res => res.rows[0])
     .catch(err => {
-      console.error('Error in addUser:', err.message);
+      console.error('addUser error:', err.message);
       return null;
     });
 };
